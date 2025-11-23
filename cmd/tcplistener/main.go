@@ -32,6 +32,13 @@ func main() {
 			"Request line:\n- Method: %s\n- Target: %s\n- Version: %s\n",
 			recievedRequest.RequestLine.Method, recievedRequest.RequestLine.RequestTarget, recievedRequest.RequestLine.HttpVersion)
 
+		fmt.Println("Headers:")
+		recievedRequest.Headers.ForEach(
+			func(key, value string) {
+				fmt.Printf("- %s: %s\n", key, value)
+			},
+		)
+
 		fmt.Println("Connection to ", conn.RemoteAddr(), " has been closed")
 	}
 

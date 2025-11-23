@@ -74,7 +74,7 @@ func TestHeaderParse(t *testing.T) {
 	assert.Equal(t, 0, n)
 	assert.False(t, done)
 
-	// Test: Adding field-name which already exists
+	// Test: Adding field-name which already exists (multiple values attatched to field name)
 	headers = NewHeaders()
 	data = []byte("User-Agent: something-very-important\r\n user-agent: the_struggle_of_mooshe\r\n\r\n")
 	n, done, err = headers.Parse(data)
