@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/NotNotState/httpfromtcp/internal/headers"
@@ -13,6 +14,7 @@ import (
 type Request struct {
 	RequestLine RequestLine
 	Headers     *headers.Headers
+	Body        []byte
 	State       requestState
 }
 
@@ -26,9 +28,10 @@ type requestState int
 
 // RECALL iota is Go's kinda sorta enum thingy
 const (
-	requestStateInitialized requestState = iota // = 0
-	requestStateDone                            // = 1
-	requestStateParsingHeaders
+	requestStateInitialized    requestState = iota // = 0
+	requestStateParsingHeaders                     // = 1
+	requestStateParsingBody                        // = 2
+	requestStateDone                               // = 3
 )
 
 const crlf = "\r\n"
@@ -52,8 +55,16 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		nBytesRead, err := reader.Read(buffer[readToIndex:])
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				if req.State != requestStateDone {
-					return nil, fmt.Errorf("incomplete request, in state: %d, read n bytes on EOF: %d", req.State, nBytesRead)
+				if req.State == requestStateParsingBody {
+					return nil, fmt.Errorf(
+						"incorrect request, request-length=%s greater than body-length, request-in state: %d ",
+						req.Headers.Get("request-length"), req.State,
+					)
+				} else if req.State != requestStateDone {
+					return nil, fmt.Errorf(
+						"incomplete request, in state: %d, read n bytes on EOF: %d",
+						req.State, nBytesRead,
+					)
 				}
 				break
 			}
@@ -149,9 +160,38 @@ func (r *Request) parseSingle(data []byte) (int, error) {
 			return 0, err
 		}
 		if done {
-			r.State = requestStateDone
+			r.State = requestStateParsingBody
 		}
 		return n, nil
+	case requestStateParsingBody:
+
+		contentLength := r.Headers.Get("content-length")
+		toParse, err := strconv.Atoi(contentLength)
+		if err != nil && contentLength != "" {
+			return 0, err
+		} else if contentLength == "" || toParse == 0 {
+			r.State = requestStateDone
+			return 0, nil
+		}
+
+		if toParse == 0 {
+
+		}
+
+		current_buffer := len(r.Body)
+
+		fmt.Printf(
+			"Content-length: %d | Length of Data: %d | current parsed body: %d\n", toParse, len(data), current_buffer,
+		)
+		if len(data) > toParse {
+			return 0, fmt.Errorf("content-length: %d greater than content-body length: %d", toParse, len(data))
+		}
+		if current_buffer+len(data) == toParse {
+			r.State = requestStateDone
+		}
+		r.Body = append(r.Body, data...)
+
+		return len(data), nil
 	case requestStateDone:
 		return 0, errors.New("error: attempting to read into done state")
 	default:

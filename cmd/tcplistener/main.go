@@ -39,6 +39,9 @@ func main() {
 			},
 		)
 
+		fmt.Println("Body:")
+		fmt.Println(string(recievedRequest.Body))
+
 		fmt.Println("Connection to ", conn.RemoteAddr(), " has been closed")
 	}
 
