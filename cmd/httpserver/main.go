@@ -1,10 +1,10 @@
 package main
 
 import (
-	"io"
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/NotNotState/httpfromtcp/internal/request"
@@ -14,22 +14,37 @@ import (
 
 const port = 42069
 
-func handler(w io.Writer, req *request.Request) *server.HandleError {
+func handler(w *response.Writer, req *request.Request) {
+	heads := response.GetDefaultHeaders(0)
+	heads.SetHard("Content-Type", "text/html")
+
 	switch req.RequestLine.RequestTarget {
+
 	case "/yourproblem":
-		return &server.HandleError{
-			StatusCode: response.Bad_Request,
-			Message:    "Your problem is not my problem\n",
-		}
+		respBody := []byte("Your request honestly kinda sucked.\n")
+		respLen := len(respBody)
+		heads.SetHard("Content-Length", strconv.Itoa(respLen))
+		w.WriteStatusLine(response.Bad_Request)
+		w.WriteHeaders(heads)
+		w.WriteBody(respBody)
+
 	case "/myproblem":
-		return &server.HandleError{
-			StatusCode: response.Internal_Server_Error,
-			Message:    "Woopsie, my bad\n",
-		}
+		respBody := []byte("Okay, you know what? This one is on me.\n")
+		respLen := len(respBody)
+		heads.SetHard("Content-Length", strconv.Itoa(respLen))
+		w.WriteStatusLine(response.Internal_Server_Error)
+		w.WriteHeaders(heads)
+		w.WriteBody(respBody)
+
 	default:
-		w.Write([]byte("All good, frfr\n"))
-		return nil
+		respBody := []byte("Your request was an absolute banger.\n")
+		respLen := len(respBody)
+		heads.SetHard("Content-Length", strconv.Itoa(respLen))
+		w.WriteStatusLine(response.Ok)
+		w.WriteHeaders(heads)
+		w.WriteBody(respBody)
 	}
+
 }
 
 func main() {

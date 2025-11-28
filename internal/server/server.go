@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net"
@@ -31,7 +30,9 @@ func (hErr *HandleError) WriteHandlerError(w io.Writer) {
 	w.Write([]byte(message))
 }
 
-type Handler func(w io.Writer, req *request.Request) *HandleError
+type Handler func(w *response.Writer, req *request.Request)
+
+//type Handler func(w io.Writer, req *request.Request) *HandleError
 
 func (s *Server) Close() error {
 	s.closed.Store(true)
@@ -52,16 +53,9 @@ func (s *Server) handle(conn net.Conn) {
 		handler_error.WriteHandlerError(conn)
 		return
 	}
-	bodyBuff := bytes.NewBuffer([]byte{})
-	hErr := s.handler(bodyBuff, req)
-	if hErr != nil {
-		hErr.WriteHandlerError(conn)
-		return
-	}
-	body := bodyBuff.Bytes()
-	response.WriteStatusLine(conn, response.Ok)
-	response.WriteHeaders(conn, response.GetDefaultHeaders(len(body)))
-	conn.Write(body)
+
+	rw := response.NewWriter(conn)
+	s.handler(rw, req)
 }
 
 func (s *Server) listen() { // modify to take in request.Request

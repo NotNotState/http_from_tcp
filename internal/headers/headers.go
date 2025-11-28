@@ -86,7 +86,12 @@ func (h *Headers) Set(name, value string) {
 	} else {
 		h.headers[name] = value
 	}
+}
 
+func (h *Headers) SetHard(name, value string) {
+	// will override whatever value existed previously
+	name = strings.ToLower(name)
+	h.headers[name] = value
 }
 
 func (h *Headers) Parse(data []byte) (int, bool, error) {
