@@ -79,6 +79,10 @@ func (h *Headers) ForEach(fn func(name, value string)) {
 	}
 }
 
+func (h *Headers) Delete(key string) {
+	delete(h.headers, strings.ToLower(key))
+}
+
 func (h *Headers) Set(name, value string) {
 	name = strings.ToLower(name)
 	if _, ok := h.headers[name]; ok {

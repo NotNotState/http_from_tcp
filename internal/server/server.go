@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"io"
 	"net"
 	"sync/atomic"
 
@@ -21,18 +20,7 @@ type HandleError struct {
 	Message    string
 }
 
-func (hErr *HandleError) WriteHandlerError(w io.Writer) {
-	response.WriteStatusLine(w, hErr.StatusCode)
-	message := hErr.Message
-	body_length := len(message)
-	defaultHeaders := response.GetDefaultHeaders(body_length)
-	response.WriteHeaders(w, defaultHeaders)
-	w.Write([]byte(message))
-}
-
 type Handler func(w *response.Writer, req *request.Request)
-
-//type Handler func(w io.Writer, req *request.Request) *HandleError
 
 func (s *Server) Close() error {
 	s.closed.Store(true)
@@ -45,16 +33,14 @@ func (s *Server) Close() error {
 func (s *Server) handle(conn net.Conn) {
 	defer conn.Close()
 	req, err := request.RequestFromReader(conn)
+	rw := response.NewWriter(conn)
 	if err != nil {
-		handler_error := HandleError{
-			StatusCode: response.Bad_Request,
-			Message:    err.Error(),
-		}
-		handler_error.WriteHandlerError(conn)
+		rw.WriteStatusLine(response.Bad_Request)
+		body := []byte("Error Parsing Request!")
+		rw.WriteHeaders(response.GetDefaultHeaders(len(body)))
+		rw.WriteBody(body)
 		return
 	}
-
-	rw := response.NewWriter(conn)
 	s.handler(rw, req)
 }
 
@@ -76,7 +62,6 @@ func Serve(port uint16, handler Handler) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	// how and what do i put within the Hanlder here?
 	//add handler to server
 	server := &Server{
 		listener: listener,
